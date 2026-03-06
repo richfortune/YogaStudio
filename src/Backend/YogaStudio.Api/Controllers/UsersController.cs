@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using YogaStudio.Core.DTOs;
 using YogaStudio.Core.Entities;
 using YogaStudio.Core.Interfaces;
 
@@ -16,32 +17,49 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<User>>> Get()
+    public async Task<ActionResult<IReadOnlyList<UserDto>>> Get()
     {
         var users = await _repository.ListAllAsync();
-        return Ok(users);
+        var dtos = users.Select(u => MapToDto(u)).ToList();
+        return Ok(dtos);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<User>> Get(Guid id)
+    public async Task<ActionResult<UserDto>> Get(Guid id)
     {
         var user = await _repository.GetByIdAsync(id);
         if (user == null) return NotFound();
-        return Ok(user);
+        return Ok(MapToDto(user));
     }
 
     [HttpPost]
-    public async Task<ActionResult<User>> Post([FromBody] User user)
+    public async Task<ActionResult<UserDto>> Post([FromBody] CreateUserDto dto)
     {
-        user.Id = Guid.NewGuid();
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            FirstName = dto.FirstName,
+            LastName = dto.LastName,
+            Email = dto.Email,
+            Phone = dto.Phone,
+            IsActive = true
+        };
         await _repository.AddAsync(user);
-        return CreatedAtAction(nameof(Get), new { id = user.Id }, user);
+        return CreatedAtAction(nameof(Get), new { id = user.Id }, MapToDto(user));
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult> Put(Guid id, [FromBody] User user)
+    public async Task<ActionResult> Put(Guid id, [FromBody] UpdateUserDto dto)
     {
-        if (id != user.Id) return BadRequest();
+        var user = await _repository.GetByIdAsync(id);
+        if (user == null) return NotFound();
+
+        user.FirstName = dto.FirstName;
+        user.LastName = dto.LastName;
+        user.Email = dto.Email;
+        user.Phone = dto.Phone;
+        user.IsActive = dto.IsActive;
+
         await _repository.UpdateAsync(user);
         return NoContent();
     }
@@ -53,5 +71,20 @@ public class UsersController : ControllerBase
         if (user == null) return NotFound();
         await _repository.DeleteAsync(user);
         return NoContent();
+    }
+
+    private static UserDto MapToDto(User user)
+    {
+        return new UserDto
+        {
+            Id = user.Id,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Email = user.Email,
+            Phone = user.Phone,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
+        };
     }
 }
