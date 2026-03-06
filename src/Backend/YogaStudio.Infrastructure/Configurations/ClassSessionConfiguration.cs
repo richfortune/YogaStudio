@@ -23,7 +23,7 @@ public class ClassSessionConfiguration : IEntityTypeConfiguration<ClassSession>
                .WithMany()
                .HasForeignKey(cs => cs.InstructorUserId)
                .OnDelete(DeleteBehavior.Restrict);
-               
+
         builder.HasOne(cs => cs.Room)
                .WithMany()
                .HasForeignKey(cs => cs.RoomId)

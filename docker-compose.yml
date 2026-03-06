@@ -1,0 +1,17 @@
+services:
+  db:
+    # Utilizziamo l'immagine Postgres per Windows in caso il Docker Engine sia impostato su Windows Containers
+    image: postgres:16
+    container_name: yogastudio-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: YogaStudioDb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
