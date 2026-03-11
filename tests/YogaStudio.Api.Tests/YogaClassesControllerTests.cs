@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using YogaStudio.Api.Controllers;
 using YogaStudio.Core.Entities;
+using YogaStudio.Core.DTOs;
 using YogaStudio.Core.Interfaces;
 
 namespace YogaStudio.Api.Tests;
@@ -29,7 +30,7 @@ public class YogaClassesControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsAssignableFrom<IReadOnlyList<YogaClass>>(okResult.Value);
+        var returnValue = Assert.IsAssignableFrom<IReadOnlyList<YogaClassDto>>(okResult.Value);
         Assert.Single(returnValue);
     }
 
@@ -59,7 +60,7 @@ public class YogaClassesControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsType<YogaClass>(okResult.Value);
+        var returnValue = Assert.IsType<YogaClassDto>(okResult.Value);
         Assert.Equal(classId, returnValue.Id);
     }
 
@@ -67,29 +68,31 @@ public class YogaClassesControllerTests
     public async Task Post_ReturnsCreatedAtActionResult()
     {
         // Arrange
-        var newClass = new YogaClass { Name = "New Class" };
+        var newClassDto = new CreateYogaClassDto { Name = "New Class" };
 
         // Act
-        var result = await _controller.Post(newClass);
+        var result = await _controller.Post(newClassDto);
 
         // Assert
         var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        var returnValue = Assert.IsType<YogaClass>(createdResult.Value);
+        var returnValue = Assert.IsType<YogaClassDto>(createdResult.Value);
         Assert.NotEqual(Guid.Empty, returnValue.Id);
         _mockRepo.Verify(repo => repo.AddAsync(It.IsAny<YogaClass>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Put_ReturnsBadRequest_WhenIdMismatch()
+    public async Task Put_ReturnsNotFound_WhenYogaClassDoesNotExist()
     {
         // Arrange
-        var yogaClass = new YogaClass { Id = Guid.NewGuid() };
+        var classId = Guid.NewGuid();
+        var updateDto = new UpdateYogaClassDto();
+        _mockRepo.Setup(repo => repo.GetByIdAsync(classId, It.IsAny<CancellationToken>())).ReturnsAsync((YogaClass?)null);
 
         // Act
-        var result = await _controller.Put(Guid.NewGuid(), yogaClass);
+        var result = await _controller.Put(classId, updateDto);
 
         // Assert
-        Assert.IsType<BadRequestResult>(result);
+        Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]
@@ -98,9 +101,11 @@ public class YogaClassesControllerTests
         // Arrange
         var classId = Guid.NewGuid();
         var yogaClass = new YogaClass { Id = classId };
+        var updateDto = new UpdateYogaClassDto { Name = "Updated Class" };
+        _mockRepo.Setup(repo => repo.GetByIdAsync(classId, It.IsAny<CancellationToken>())).ReturnsAsync(yogaClass);
 
         // Act
-        var result = await _controller.Put(classId, yogaClass);
+        var result = await _controller.Put(classId, updateDto);
 
         // Assert
         Assert.IsType<NoContentResult>(result);

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using YogaStudio.Api.Controllers;
 using YogaStudio.Core.Entities;
+using YogaStudio.Core.DTOs;
 using YogaStudio.Core.Interfaces;
 
 namespace YogaStudio.Api.Tests;
@@ -29,7 +30,7 @@ public class RoomsControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsAssignableFrom<IReadOnlyList<Room>>(okResult.Value);
+        var returnValue = Assert.IsAssignableFrom<IReadOnlyList<RoomDto>>(okResult.Value);
         Assert.Single(returnValue);
     }
 
@@ -59,7 +60,7 @@ public class RoomsControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsType<Room>(okResult.Value);
+        var returnValue = Assert.IsType<RoomDto>(okResult.Value);
         Assert.Equal(roomId, returnValue.Id);
     }
 
@@ -67,29 +68,31 @@ public class RoomsControllerTests
     public async Task Post_ReturnsCreatedAtActionResult()
     {
         // Arrange
-        var newRoom = new Room { Name = "Studio B" };
+        var newRoomDto = new CreateRoomDto { Name = "Studio B", Capacity = 10 };
 
         // Act
-        var result = await _controller.Post(newRoom);
+        var result = await _controller.Post(newRoomDto);
 
         // Assert
         var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        var returnValue = Assert.IsType<Room>(createdResult.Value);
+        var returnValue = Assert.IsType<RoomDto>(createdResult.Value);
         Assert.NotEqual(Guid.Empty, returnValue.Id);
         _mockRepo.Verify(repo => repo.AddAsync(It.IsAny<Room>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Put_ReturnsBadRequest_WhenIdMismatch()
+    public async Task Put_ReturnsNotFound_WhenRoomDoesNotExist()
     {
         // Arrange
-        var room = new Room { Id = Guid.NewGuid() };
+        var roomId = Guid.NewGuid();
+        var updateDto = new UpdateRoomDto();
+        _mockRepo.Setup(repo => repo.GetByIdAsync(roomId, It.IsAny<CancellationToken>())).ReturnsAsync((Room?)null);
 
         // Act
-        var result = await _controller.Put(Guid.NewGuid(), room);
+        var result = await _controller.Put(roomId, updateDto);
 
         // Assert
-        Assert.IsType<BadRequestResult>(result);
+        Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]
@@ -98,9 +101,11 @@ public class RoomsControllerTests
         // Arrange
         var roomId = Guid.NewGuid();
         var room = new Room { Id = roomId };
+        var updateDto = new UpdateRoomDto { Name = "Updated", Capacity = 20 };
+        _mockRepo.Setup(repo => repo.GetByIdAsync(roomId, It.IsAny<CancellationToken>())).ReturnsAsync(room);
 
         // Act
-        var result = await _controller.Put(roomId, room);
+        var result = await _controller.Put(roomId, updateDto);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
