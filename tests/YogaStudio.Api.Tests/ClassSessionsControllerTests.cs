@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using YogaStudio.Api.Controllers;
 using YogaStudio.Core.Entities;
+using YogaStudio.Core.DTOs;
 using YogaStudio.Core.Interfaces;
 
 namespace YogaStudio.Api.Tests;
@@ -29,7 +30,7 @@ public class ClassSessionsControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsAssignableFrom<IReadOnlyList<ClassSession>>(okResult.Value);
+        var returnValue = Assert.IsAssignableFrom<IReadOnlyList<ClassSessionDto>>(okResult.Value);
         Assert.Single(returnValue);
     }
 
@@ -59,7 +60,7 @@ public class ClassSessionsControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsType<ClassSession>(okResult.Value);
+        var returnValue = Assert.IsType<ClassSessionDto>(okResult.Value);
         Assert.Equal(sessionId, returnValue.Id);
     }
 
@@ -67,29 +68,31 @@ public class ClassSessionsControllerTests
     public async Task Post_ReturnsCreatedAtActionResult()
     {
         // Arrange
-        var newSession = new ClassSession();
+        var newSessionDto = new CreateClassSessionDto();
 
         // Act
-        var result = await _controller.Post(newSession);
+        var result = await _controller.Post(newSessionDto);
 
         // Assert
         var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        var returnValue = Assert.IsType<ClassSession>(createdResult.Value);
+        var returnValue = Assert.IsType<ClassSessionDto>(createdResult.Value);
         Assert.NotEqual(Guid.Empty, returnValue.Id);
         _mockRepo.Verify(repo => repo.AddAsync(It.IsAny<ClassSession>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Put_ReturnsBadRequest_WhenIdMismatch()
+    public async Task Put_ReturnsNotFound_WhenSessionDoesNotExist()
     {
         // Arrange
-        var session = new ClassSession { Id = Guid.NewGuid() };
+        var sessionId = Guid.NewGuid();
+        var updateDto = new UpdateClassSessionDto();
+        _mockRepo.Setup(repo => repo.GetByIdAsync(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync((ClassSession?)null);
 
         // Act
-        var result = await _controller.Put(Guid.NewGuid(), session);
+        var result = await _controller.Put(sessionId, updateDto);
 
         // Assert
-        Assert.IsType<BadRequestResult>(result);
+        Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]
@@ -98,9 +101,11 @@ public class ClassSessionsControllerTests
         // Arrange
         var sessionId = Guid.NewGuid();
         var session = new ClassSession { Id = sessionId };
+        var updateDto = new UpdateClassSessionDto();
+        _mockRepo.Setup(repo => repo.GetByIdAsync(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync(session);
 
         // Act
-        var result = await _controller.Put(sessionId, session);
+        var result = await _controller.Put(sessionId, updateDto);
 
         // Assert
         Assert.IsType<NoContentResult>(result);

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using YogaStudio.Api.Controllers;
 using YogaStudio.Core.Entities;
+using YogaStudio.Core.DTOs;
 using YogaStudio.Core.Interfaces;
 
 namespace YogaStudio.Api.Tests;
@@ -29,7 +30,7 @@ public class UsersControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsAssignableFrom<IReadOnlyList<User>>(okResult.Value);
+        var returnValue = Assert.IsAssignableFrom<IReadOnlyList<UserDto>>(okResult.Value);
         Assert.Single(returnValue);
     }
 
@@ -59,7 +60,7 @@ public class UsersControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsType<User>(okResult.Value);
+        var returnValue = Assert.IsType<UserDto>(okResult.Value);
         Assert.Equal(userId, returnValue.Id);
     }
 
@@ -67,29 +68,31 @@ public class UsersControllerTests
     public async Task Post_ReturnsCreatedAtActionResult()
     {
         // Arrange
-        var newUser = new User { FirstName = "New" };
+        var newUserDto = new CreateUserDto { FirstName = "New", LastName = "User", Email = "test@test.com" };
 
         // Act
-        var result = await _controller.Post(newUser);
+        var result = await _controller.Post(newUserDto);
 
         // Assert
         var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        var returnValue = Assert.IsType<User>(createdResult.Value);
+        var returnValue = Assert.IsType<UserDto>(createdResult.Value);
         Assert.NotEqual(Guid.Empty, returnValue.Id);
         _mockRepo.Verify(repo => repo.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Put_ReturnsBadRequest_WhenIdMismatch()
+    public async Task Put_ReturnsNotFound_WhenUserDoesNotExist()
     {
         // Arrange
-        var user = new User { Id = Guid.NewGuid() };
+        var userId = Guid.NewGuid();
+        var updateDto = new UpdateUserDto();
+        _mockRepo.Setup(repo => repo.GetByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
         // Act
-        var result = await _controller.Put(Guid.NewGuid(), user);
+        var result = await _controller.Put(userId, updateDto);
 
         // Assert
-        Assert.IsType<BadRequestResult>(result);
+        Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]
@@ -97,14 +100,16 @@ public class UsersControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId };
+        var existingUser = new User { Id = userId };
+        var updateDto = new UpdateUserDto { FirstName = "Updated" };
+        _mockRepo.Setup(repo => repo.GetByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(existingUser);
 
         // Act
-        var result = await _controller.Put(userId, user);
+        var result = await _controller.Put(userId, updateDto);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        _mockRepo.Verify(repo => repo.UpdateAsync(user, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepo.Verify(repo => repo.UpdateAsync(existingUser, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using YogaStudio.Core.DTOs;
 using YogaStudio.Core.Entities;
 using YogaStudio.Core.Interfaces;
 
@@ -16,32 +17,45 @@ public class YogaClassesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<YogaClass>>> Get()
+    public async Task<ActionResult<IReadOnlyList<YogaClassDto>>> Get()
     {
         var classes = await _repository.ListAllAsync();
-        return Ok(classes);
+        var dtos = classes.Select(c => MapToDto(c)).ToList();
+        return Ok(dtos);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<YogaClass>> Get(Guid id)
+    public async Task<ActionResult<YogaClassDto>> Get(Guid id)
     {
         var yogaClass = await _repository.GetByIdAsync(id);
         if (yogaClass == null) return NotFound();
-        return Ok(yogaClass);
+        return Ok(MapToDto(yogaClass));
     }
 
     [HttpPost]
-    public async Task<ActionResult<YogaClass>> Post([FromBody] YogaClass yogaClass)
+    public async Task<ActionResult<YogaClassDto>> Post([FromBody] CreateYogaClassDto dto)
     {
-        yogaClass.Id = Guid.NewGuid();
+        var yogaClass = new YogaClass
+        {
+            Id = Guid.NewGuid(),
+            Name = dto.Name,
+            Description = dto.Description,
+            DifficultyLevel = dto.DifficultyLevel
+        };
         await _repository.AddAsync(yogaClass);
-        return CreatedAtAction(nameof(Get), new { id = yogaClass.Id }, yogaClass);
+        return CreatedAtAction(nameof(Get), new { id = yogaClass.Id }, MapToDto(yogaClass));
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult> Put(Guid id, [FromBody] YogaClass yogaClass)
+    public async Task<ActionResult> Put(Guid id, [FromBody] UpdateYogaClassDto dto)
     {
-        if (id != yogaClass.Id) return BadRequest();
+        var yogaClass = await _repository.GetByIdAsync(id);
+        if (yogaClass == null) return NotFound();
+
+        yogaClass.Name = dto.Name;
+        yogaClass.Description = dto.Description;
+        yogaClass.DifficultyLevel = dto.DifficultyLevel;
+
         await _repository.UpdateAsync(yogaClass);
         return NoContent();
     }
@@ -53,5 +67,18 @@ public class YogaClassesController : ControllerBase
         if (yogaClass == null) return NotFound();
         await _repository.DeleteAsync(yogaClass);
         return NoContent();
+    }
+
+    private static YogaClassDto MapToDto(YogaClass yc)
+    {
+        return new YogaClassDto
+        {
+            Id = yc.Id,
+            Name = yc.Name,
+            Description = yc.Description,
+            DifficultyLevel = yc.DifficultyLevel,
+            CreatedAt = yc.CreatedAt,
+            UpdatedAt = yc.UpdatedAt
+        };
     }
 }
