@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using YogaStudio.Core.DTOs;
 using YogaStudio.Core.Entities;
 using YogaStudio.Core.Interfaces;
 
@@ -16,32 +17,45 @@ public class RoomsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<Room>>> Get()
+    public async Task<ActionResult<IReadOnlyList<RoomDto>>> Get()
     {
         var rooms = await _repository.ListAllAsync();
-        return Ok(rooms);
+        var dtos = rooms.Select(r => MapToDto(r)).ToList();
+        return Ok(dtos);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Room>> Get(Guid id)
+    public async Task<ActionResult<RoomDto>> Get(Guid id)
     {
         var room = await _repository.GetByIdAsync(id);
         if (room == null) return NotFound();
-        return Ok(room);
+        return Ok(MapToDto(room));
     }
 
     [HttpPost]
-    public async Task<ActionResult<Room>> Post([FromBody] Room room)
+    public async Task<ActionResult<RoomDto>> Post([FromBody] CreateRoomDto dto)
     {
-        room.Id = Guid.NewGuid();
+        var room = new Room
+        {
+            Id = Guid.NewGuid(),
+            Name = dto.Name,
+            Capacity = dto.Capacity,
+            Address = dto.Address
+        };
         await _repository.AddAsync(room);
-        return CreatedAtAction(nameof(Get), new { id = room.Id }, room);
+        return CreatedAtAction(nameof(Get), new { id = room.Id }, MapToDto(room));
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult> Put(Guid id, [FromBody] Room room)
+    public async Task<ActionResult> Put(Guid id, [FromBody] UpdateRoomDto dto)
     {
-        if (id != room.Id) return BadRequest();
+        var room = await _repository.GetByIdAsync(id);
+        if (room == null) return NotFound();
+
+        room.Name = dto.Name;
+        room.Capacity = dto.Capacity;
+        room.Address = dto.Address;
+
         await _repository.UpdateAsync(room);
         return NoContent();
     }
@@ -53,5 +67,16 @@ public class RoomsController : ControllerBase
         if (room == null) return NotFound();
         await _repository.DeleteAsync(room);
         return NoContent();
+    }
+
+    private static RoomDto MapToDto(Room room)
+    {
+        return new RoomDto
+        {
+            Id = room.Id,
+            Name = room.Name,
+            Capacity = room.Capacity,
+            Address = room.Address
+        };
     }
 }

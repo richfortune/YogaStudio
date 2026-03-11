@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using YogaStudio.Api.Controllers;
 using YogaStudio.Core.Entities;
+using YogaStudio.Core.DTOs;
 using YogaStudio.Core.Interfaces;
 
 namespace YogaStudio.Api.Tests;
@@ -29,7 +30,7 @@ public class BookingsControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsAssignableFrom<IReadOnlyList<Booking>>(okResult.Value);
+        var returnValue = Assert.IsAssignableFrom<IReadOnlyList<BookingDto>>(okResult.Value);
         Assert.Single(returnValue);
     }
 
@@ -59,7 +60,7 @@ public class BookingsControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsType<Booking>(okResult.Value);
+        var returnValue = Assert.IsType<BookingDto>(okResult.Value);
         Assert.Equal(bookingId, returnValue.Id);
     }
 
@@ -67,29 +68,31 @@ public class BookingsControllerTests
     public async Task Post_ReturnsCreatedAtActionResult()
     {
         // Arrange
-        var newBooking = new Booking { StudentUserId = Guid.NewGuid() };
+        var newBookingDto = new CreateBookingDto { StudentUserId = Guid.NewGuid(), SessionId = Guid.NewGuid() };
 
         // Act
-        var result = await _controller.Post(newBooking);
+        var result = await _controller.Post(newBookingDto);
 
         // Assert
         var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        var returnValue = Assert.IsType<Booking>(createdResult.Value);
+        var returnValue = Assert.IsType<BookingDto>(createdResult.Value);
         Assert.NotEqual(Guid.Empty, returnValue.Id);
         _mockRepo.Verify(repo => repo.AddAsync(It.IsAny<Booking>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Put_ReturnsBadRequest_WhenIdMismatch()
+    public async Task Put_ReturnsNotFound_WhenBookingDoesNotExist()
     {
         // Arrange
-        var booking = new Booking { Id = Guid.NewGuid() };
+        var bookingId = Guid.NewGuid();
+        var updateDto = new UpdateBookingDto();
+        _mockRepo.Setup(repo => repo.GetByIdAsync(bookingId, It.IsAny<CancellationToken>())).ReturnsAsync((Booking?)null);
 
         // Act
-        var result = await _controller.Put(Guid.NewGuid(), booking);
+        var result = await _controller.Put(bookingId, updateDto);
 
         // Assert
-        Assert.IsType<BadRequestResult>(result);
+        Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]
@@ -98,9 +101,11 @@ public class BookingsControllerTests
         // Arrange
         var bookingId = Guid.NewGuid();
         var booking = new Booking { Id = bookingId };
+        var updateDto = new UpdateBookingDto();
+        _mockRepo.Setup(repo => repo.GetByIdAsync(bookingId, It.IsAny<CancellationToken>())).ReturnsAsync(booking);
 
         // Act
-        var result = await _controller.Put(bookingId, booking);
+        var result = await _controller.Put(bookingId, updateDto);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
