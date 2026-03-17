@@ -22,7 +22,7 @@ public class UsersControllerTests
     public async Task Get_ReturnsOkResult_WithListOfUsers()
     {
         // Arrange
-        var mockUsers = new List<User> { new User { Id = Guid.NewGuid(), FirstName = "Test", Email = "test@test.com" } };
+        var mockUsers = new List<User> { new() { Id = Guid.NewGuid(), FirstName = "Test", Email = "test@test.com" } };
         _mockRepo.Setup(repo => repo.ListAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(mockUsers);
 
         // Act
