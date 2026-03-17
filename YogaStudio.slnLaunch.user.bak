@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "src\\Backend\\YogaStudio.Api\\YogaStudio.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\Frontend\\YogaStudioFrontend.esproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

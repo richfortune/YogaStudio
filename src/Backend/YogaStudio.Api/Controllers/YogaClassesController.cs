@@ -39,7 +39,7 @@ public class YogaClassesController : ControllerBase
         {
             Id = Guid.NewGuid(),
             Name = dto.Name,
-            Description = dto.Description,
+            Description = dto.Description ?? string.Empty,
             DifficultyLevel = dto.DifficultyLevel
         };
         await _repository.AddAsync(yogaClass);
@@ -53,7 +53,7 @@ public class YogaClassesController : ControllerBase
         if (yogaClass == null) return NotFound();
 
         yogaClass.Name = dto.Name;
-        yogaClass.Description = dto.Description;
+        yogaClass.Description = dto.Description ?? string.Empty;
         yogaClass.DifficultyLevel = dto.DifficultyLevel;
 
         await _repository.UpdateAsync(yogaClass);
